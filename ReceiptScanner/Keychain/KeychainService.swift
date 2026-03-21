@@ -27,6 +27,7 @@ struct KeychainService {
     enum Key: String {
         case openAIAPIKey       = "com.receiptscanner.openai.apikey"
         case geminiAPIKey       = "com.receiptscanner.gemini.apikey"
+        case claudeAPIKey       = "com.receiptscanner.claude.apikey"
         case googleAccessToken  = "com.receiptscanner.google.accesstoken"
         case googleRefreshToken = "com.receiptscanner.google.refreshtoken"
         case googleTokenExpiry  = "com.receiptscanner.google.tokenexpiry"

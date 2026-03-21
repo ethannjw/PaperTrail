@@ -219,15 +219,4 @@ extension CameraManager: AVCapturePhotoCaptureDelegate {
     }
 }
 
-// MARK: - UIImage Orientation Fix
-
-extension UIImage {
-    func fixedOrientation() -> UIImage {
-        guard imageOrientation != .up else { return self }
-        UIGraphicsBeginImageContextWithOptions(size, false, scale)
-        draw(in: CGRect(origin: .zero, size: size))
-        let fixed = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return fixed ?? self
-    }
-}
+// fixedOrientation is defined in UIImage+Extensions.swift

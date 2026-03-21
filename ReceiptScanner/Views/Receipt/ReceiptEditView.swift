@@ -32,6 +32,15 @@ struct ReceiptEditView: View {
                     }
                 }
 
+                // MARK: - Confidence Notes
+                if let notes = viewModel.editableReceipt.confidenceNotes, !notes.isEmpty {
+                    Section {
+                        Label(notes, systemImage: "info.circle")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
                 // MARK: - Duplicate Warning
                 if viewModel.editableReceipt.isDuplicate {
                     Section {
@@ -52,7 +61,7 @@ struct ReceiptEditView: View {
                     )
                 }
 
-                // MARK: - Amount
+                // MARK: - Amount & Tax
                 Section("Amount") {
                     HStack {
                         Text("Total")
@@ -63,14 +72,45 @@ struct ReceiptEditView: View {
                     }
 
                     HStack {
+                        Text("Tax")
+                        Spacer()
+                        TextField("0.00", value: $viewModel.editableReceipt.taxAmount, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    HStack {
                         Text("Currency")
                         Spacer()
                         TextField("USD", text: $viewModel.editableReceipt.currency)
-                            .autocapitalization(.allCharacters)
+                            .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
                             .frame(width: 60)
                             .multilineTextAlignment(.trailing)
                     }
+                }
+
+                // MARK: - Receipt Number
+                Section("Receipt Number") {
+                    TextField("e.g. INV-001234 (from receipt)", text: Binding(
+                        get: { viewModel.editableReceipt.receiptNumber ?? "" },
+                        set: { viewModel.editableReceipt.receiptNumber = $0.isEmpty ? nil : $0 }
+                    ))
+                }
+
+                // MARK: - Purpose & Filename
+                Section("Description") {
+                    TextField("Purpose / expense description", text: Binding(
+                        get: { viewModel.editableReceipt.purpose ?? "" },
+                        set: { viewModel.editableReceipt.purpose = $0.isEmpty ? nil : $0 }
+                    ))
+
+                    TextField("Suggested filename", text: Binding(
+                        get: { viewModel.editableReceipt.suggestedFilename ?? "" },
+                        set: { viewModel.editableReceipt.suggestedFilename = $0.isEmpty ? nil : $0 }
+                    ))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 }
 
                 // MARK: - Category

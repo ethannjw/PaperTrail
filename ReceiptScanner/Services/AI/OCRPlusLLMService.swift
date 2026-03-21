@@ -13,9 +13,12 @@ import UIKit
 
 final class OCRPlusLLMService: AIService {
 
+    var appSettings: AppSettings?
+
     enum LLMProvider {
         case openai
         case gemini
+        case claude
     }
 
     // MARK: - Dependencies
@@ -29,6 +32,7 @@ final class OCRPlusLLMService: AIService {
         switch llmProvider {
         case .openai: self.baseURL = AppConfig.shared.openAIBaseURL
         case .gemini: self.baseURL = AppConfig.shared.geminiBaseURL
+        case .claude: self.baseURL = AppConfig.shared.claudeBaseURL
         }
     }
 
@@ -49,6 +53,7 @@ final class OCRPlusLLMService: AIService {
         switch llmProvider {
         case .openai: return try await callOpenAI(text: text)
         case .gemini: return try await callGemini(text: text)
+        case .claude: return try await callClaude(text: text)
         }
     }
 
@@ -63,7 +68,7 @@ final class OCRPlusLLMService: AIService {
             "model": "gpt-4o",
             "max_tokens": 1024,
             "messages": [
-                ["role": "system", "content": ReceiptPrompts.systemPrompt],
+                ["role": "system", "content": systemPrompt],
                 ["role": "user",   "content": ReceiptPrompts.ocrUserPrompt(text: text)]
             ]
         ]
@@ -103,7 +108,7 @@ final class OCRPlusLLMService: AIService {
                 [
                     "role": "user",
                     "parts": [
-                        ["text": ReceiptPrompts.systemPrompt],
+                        ["text": systemPrompt],
                         ["text": ReceiptPrompts.ocrUserPrompt(text: text)]
                     ]
                 ]
@@ -140,6 +145,46 @@ final class OCRPlusLLMService: AIService {
             let parts       = (candidates.first?["content"] as? [String: Any])?["parts"] as? [[String: Any]],
             let text        = parts.first?["text"] as? String
         else { throw AppError.invalidJSONResponse("Gemini response structure unexpected") }
+        return text
+    }
+
+    // MARK: - Claude Text Completion
+
+    private func callClaude(text: String) async throws -> String {
+        guard let key = try? KeychainService.load(key: .claudeAPIKey), !key.isEmpty else {
+            throw AppError.missingAPIKey("Claude")
+        }
+
+        let body: [String: Any] = [
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 1024,
+            "system": systemPrompt,
+            "messages": [
+                ["role": "user", "content": ReceiptPrompts.ocrUserPrompt(text: text)]
+            ]
+        ]
+
+        let url = baseURL.appendingPathComponent("/v1/messages")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(key, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.timeoutInterval = AppConfig.shared.networkTimeoutSeconds
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            let errBody = String(data: data, encoding: .utf8) ?? ""
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            throw AppError.httpError(code, errBody)
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard
+            let content = json?["content"] as? [[String: Any]],
+            let text = content.first?["text"] as? String
+        else { throw AppError.invalidJSONResponse("Claude response structure unexpected") }
         return text
     }
 }

@@ -1,6 +1,6 @@
 // CameraViewModel.swift
 // Orchestrates the full receipt capture pipeline:
-//   Camera → OCR/AI extraction → Validation → Submission
+//   Camera → Image Enhancement → OCR/AI extraction → Validation → Submission
 // MVVM: Views observe @Published properties; this VM holds all state.
 
 import Foundation
@@ -11,6 +11,7 @@ import Combine
 
 enum PipelineStage: Equatable {
     case idle
+    case authorized
     case capturing
     case processing(String)    // Message like "Extracting data…"
     case editing(Receipt)
@@ -27,9 +28,11 @@ final class CameraViewModel: ObservableObject {
     // MARK: - Published State
     @Published var stage: PipelineStage = .idle
     @Published var capturedImage: UIImage?
+    @Published var enhancedImage: UIImage?
     @Published var editableReceipt: Receipt = Receipt()
     @Published var validationIssues: [String] = []
     @Published var showValidationAlert: Bool  = false
+    @Published var showDocumentScanner: Bool  = false
 
     // MARK: - Dependencies
     let cameraManager: CameraManager
@@ -51,12 +54,15 @@ final class CameraViewModel: ObservableObject {
     ) {
         self.appSettings       = appSettings
         self.googleAuth        = googleAuth
-        self.driveService      = GoogleDriveService(authService: googleAuth)
-        self.sheetsService     = GoogleSheetsService(authService: googleAuth)
+        self.driveService      = GoogleDriveService(authService: googleAuth, appSettings: appSettings)
+        self.sheetsService     = GoogleSheetsService(authService: googleAuth, appSettings: appSettings)
         self.offlineQueue      = offlineQueue
         self.analyticsStore    = analyticsStore
         self.cameraManager     = CameraManager()
         self.duplicateDetector = DuplicateDetector()
+
+        // Wire up analytics to read from sheets
+        analyticsStore.configure(sheetsService: self.sheetsService)
     }
 
     // MARK: - Camera Lifecycle
@@ -69,7 +75,7 @@ final class CameraViewModel: ObservableObject {
         cameraManager.stopSession()
     }
 
-    // MARK: - Step 1: Capture
+    // MARK: - Step 1: Capture (Custom Camera)
 
     func capturePhoto() async {
         do {
@@ -84,22 +90,39 @@ final class CameraViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Step 1b: Capture (VisionKit Document Scanner)
+
+    func handleDocumentScanResult(_ image: UIImage) {
+        capturedImage = image
+        Task { await processImage(image) }
+    }
+
     func retakePhoto() {
         capturedImage = nil
+        enhancedImage = nil
         editableReceipt = Receipt()
         validationIssues = []
         stage = .idle
     }
 
-    // MARK: - Step 2: AI Processing
+    // MARK: - Step 2: Image Enhancement + AI Processing
 
     func processImage(_ image: UIImage) async {
-        stage = .processing("Analyzing receipt...")
+        stage = .processing("Detecting receipt edges...")
 
         do {
             // Auto-crop using Vision rectangle detection
             let cropped = await ocrService.detectAndCropReceipt(from: image)
-            capturedImage = cropped
+
+            // Apply image enhancement pipeline
+            stage = .processing("Enhancing image...")
+            let enhanced = ImageProcessor.enhanceReceipt(cropped, grayscale: true)
+            enhancedImage = enhanced
+            capturedImage = cropped  // Keep original crop for upload
+
+            // Generate PDF
+            stage = .processing("Generating PDF...")
+            let pdfData = PDFGenerator.generatePDF(from: cropped)
 
             stage = .processing("Extracting data with AI...")
             let aiService = AIServiceFactory.makeCurrentService(settings: appSettings)
@@ -108,12 +131,19 @@ final class CameraViewModel: ObservableObject {
             receipt.imageLocalURL = saveImageLocally(cropped, id: receipt.id)
             receipt.currency      = receipt.currency.isEmpty ? appSettings.defaultCurrency : receipt.currency
 
+            // Save PDF locally
+            let filename = receipt.suggestedFilename ?? "\(receipt.date)_\(receipt.merchant)"
+            receipt.pdfLocalURL = PDFGenerator.savePDF(pdfData, filename: filename)
+
             // Category classification
             stage = .processing("Classifying category...")
-            receipt.category = await CategoryClassifier.classify(
-                merchant: receipt.merchant,
-                items: receipt.items
-            )
+            let aiCategory = receipt.category
+            if aiCategory == nil || aiCategory?.isEmpty == true {
+                receipt.category = await CategoryClassifier.classify(
+                    merchant: receipt.merchant,
+                    items: receipt.items
+                )
+            }
 
             // Duplicate check
             receipt.isDuplicate = await duplicateDetector.isDuplicate(receipt)
@@ -149,24 +179,40 @@ final class CameraViewModel: ObservableObject {
         stage = .submitting
         var receipt = editableReceipt
         receipt.submittedAt = Date()
+        receipt.syncStatus = .uploading
 
         do {
             // Check connectivity
             guard NetworkMonitor.shared.isConnected else {
+                receipt.syncStatus = .failed
                 try offlineQueue.enqueue(receipt)
                 stage = .failed(.networkUnavailable)
                 return
             }
 
-            // Upload image to Drive
+            NSLog("[PaperTrail] Starting submit — sheetID: '%@', sheetName: '%@', folderID: '%@'",
+                  appSettings.googleSpreadsheetID, appSettings.googleSpreadsheetName, appSettings.googleDriveFolderID)
+
+            // Save PDF to Files app (accessible via iCloud Drive, etc.)
             if let image = capturedImage {
-                stage = .processing("Uploading image to Drive...")
-                receipt.imageDriveURL = try await driveService.uploadReceiptImage(image, receipt: receipt)
+                stage = .processing("Saving to Files...")
+                saveToFilesApp(image: image, receipt: receipt)
+
+                // Upload PDF to Google Drive
+                stage = .processing("Uploading to Drive...")
+                NSLog("[PaperTrail] Uploading to Drive...")
+                receipt.imageDriveURL = try await driveService.uploadReceipt(image: image, receipt: receipt)
+                NSLog("[PaperTrail] Drive upload done: %@", receipt.imageDriveURL ?? "nil")
             }
 
             // Write to Sheets
             stage = .processing("Saving to Google Sheets...")
+            NSLog("[PaperTrail] Writing to Sheets...")
             try await sheetsService.appendReceipt(receipt)
+            NSLog("[PaperTrail] Sheets write done")
+
+            // Mark as synced
+            receipt.syncStatus = .synced
 
             // Persist locally for analytics
             analyticsStore.add(receipt)
@@ -174,14 +220,23 @@ final class CameraViewModel: ObservableObject {
             stage = .success(receipt)
 
         } catch let appErr as AppError {
-            // Save to offline queue on network failure
+            NSLog("[PaperTrail] Submit failed (AppError): %@", appErr.localizedDescription)
+            receipt.syncStatus = .failed
             if case .networkUnavailable = appErr {
                 try? offlineQueue.enqueue(receipt)
             }
             stage = .failed(appErr)
         } catch {
+            NSLog("[PaperTrail] Submit failed (other): %@", error.localizedDescription)
+            receipt.syncStatus = .failed
             stage = .failed(.unknown(error.localizedDescription))
         }
+    }
+
+    // MARK: - Retry
+
+    func retrySubmit() {
+        Task { await submitReceipt() }
     }
 
     // MARK: - Local Image Persistence
@@ -197,5 +252,44 @@ final class CameraViewModel: ObservableObject {
             return url
         }
         return nil
+    }
+
+    // MARK: - Save to Files App
+
+    /// Saves the receipt PDF to the user's chosen folder (or default Documents).
+    private func saveToFilesApp(image: UIImage, receipt: Receipt) {
+        let fm = FileManager.default
+
+        let filename = receipt.suggestedFilename ?? "\(receipt.date)_\(receipt.merchant)_\(receipt.id.uuidString.prefix(6))"
+        let sanitized = PDFGenerator.sanitizeFilename(filename)
+        let pdfData = PDFGenerator.generatePDF(from: image, receipt: receipt)
+
+        // Try user-selected folder first
+        if let bookmarkedURL = FolderBookmarkService.resolveBookmark() {
+            guard bookmarkedURL.startAccessingSecurityScopedResource() else { return saveFallback(pdfData, sanitized: sanitized) }
+            defer { bookmarkedURL.stopAccessingSecurityScopedResource() }
+
+            let pdfURL = bookmarkedURL.appendingPathComponent("\(sanitized).pdf")
+            do {
+                try pdfData.write(to: pdfURL, options: .atomic)
+                editableReceipt.pdfLocalURL = pdfURL
+                return
+            } catch {
+                print("[Files] Failed to write to bookmarked folder: \(error). Falling back.")
+            }
+        }
+
+        saveFallback(pdfData, sanitized: sanitized)
+    }
+
+    private func saveFallback(_ pdfData: Data, sanitized: String) {
+        let fm = FileManager.default
+        guard var baseDir = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        baseDir = baseDir.appendingPathComponent("Scanned Receipts", isDirectory: true)
+        try? fm.createDirectory(at: baseDir, withIntermediateDirectories: true)
+
+        let pdfURL = baseDir.appendingPathComponent("\(sanitized).pdf")
+        try? pdfData.write(to: pdfURL, options: .atomic)
+        editableReceipt.pdfLocalURL = pdfURL
     }
 }

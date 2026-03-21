@@ -1,6 +1,6 @@
 // MainFlowView.swift
-// Top-level view that drives the capture → process → edit → submit pipeline
-// by observing CameraViewModel.stage.
+// Alternative top-level view for the capture → process → edit → submit pipeline.
+// Kept for reference; primary flow is handled by FlowCoordinator in RootView.
 
 import SwiftUI
 
@@ -14,10 +14,6 @@ struct MainFlowView: View {
     @StateObject private var viewModel: CameraViewModel
 
     init() {
-        // CameraViewModel is created here; @StateObject retains it
-        // We can't inject from EnvironmentObject during init, so we use a dummy placeholder
-        // and replace in onAppear. Pattern: use a container approach.
-        // Workaround: create with temp objects, replace via onAppear using wrappedValue.
         _viewModel = StateObject(wrappedValue: CameraViewModel(
             appSettings: AppSettings(),
             googleAuth: GoogleAuthService(),
@@ -29,17 +25,13 @@ struct MainFlowView: View {
     var body: some View {
         ZStack {
             switch viewModel.stage {
-
-            // MARK: - Camera
             case .idle, .authorized:
                 CameraView(viewModel: viewModel)
 
-            // MARK: - Capturing in progress
             case .capturing:
                 CameraView(viewModel: viewModel)
                     .overlay(LoadingOverlay(message: "Capturing..."))
 
-            // MARK: - AI Processing
             case .processing(let msg):
                 if let image = viewModel.capturedImage {
                     ZStack {
@@ -54,11 +46,9 @@ struct MainFlowView: View {
                     LoadingOverlay(message: msg)
                 }
 
-            // MARK: - Editing
             case .editing:
                 ReceiptEditView(viewModel: viewModel)
 
-            // MARK: - Submitting
             case .submitting:
                 if let image = viewModel.capturedImage {
                     ZStack {
@@ -71,13 +61,11 @@ struct MainFlowView: View {
                     }
                 }
 
-            // MARK: - Success
             case .success(let receipt):
                 SuccessOverlay(receipt: receipt) {
                     viewModel.retakePhoto()
                 }
 
-            // MARK: - Error
             case .failed(let error):
                 CameraView(viewModel: viewModel)
                     .overlay(alignment: .top) {
@@ -91,7 +79,6 @@ struct MainFlowView: View {
         .animation(.easeInOut(duration: 0.3), value: stageID)
     }
 
-    // A simple Equatable proxy to drive animation
     private var stageID: String {
         switch viewModel.stage {
         case .idle:           return "idle"

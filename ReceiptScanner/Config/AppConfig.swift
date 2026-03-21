@@ -11,6 +11,8 @@ struct AppConfig {
     enum AIProvider: String, CaseIterable, Codable {
         case openai  = "openai"
         case gemini  = "gemini"
+        case claude  = "claude"
+        case mock    = "mock"
     }
 
     enum ProcessingMode: String, CaseIterable, Codable {
@@ -28,14 +30,15 @@ struct AppConfig {
     // Endpoint overrides (useful for proxies / enterprise gateways)
     let openAIBaseURL: URL
     let geminiBaseURL: URL
+    let claudeBaseURL: URL
 
     // Google OAuth
     let googleClientID: String
     let googleRedirectURI: String
 
-    // Google resource identifiers
-    let googleDriveFolderID: String   // Parent folder for uploaded receipts
-    let googleSpreadsheetID: String   // Target spreadsheet
+    // Google resource identifiers (defaults — user can override in Settings)
+    let defaultGoogleDriveFolderID: String
+    let defaultGoogleSpreadsheetID: String
 
     // Timeouts
     let networkTimeoutSeconds: Double
@@ -69,10 +72,14 @@ struct AppConfig {
             ?? "https://generativelanguage.googleapis.com"
         geminiBaseURL = URL(string: geminiBase)!
 
+        let claudeBase: String = dict["ClaudeBaseURL"] as? String
+            ?? "https://api.anthropic.com"
+        claudeBaseURL = URL(string: claudeBase)!
+
         googleClientID    = require("GoogleClientID")
         googleRedirectURI = require("GoogleRedirectURI")
-        googleDriveFolderID   = require("GoogleDriveFolderID")
-        googleSpreadsheetID   = require("GoogleSpreadsheetID")
+        defaultGoogleDriveFolderID = dict["GoogleDriveFolderID"] as? String ?? ""
+        defaultGoogleSpreadsheetID = dict["GoogleSpreadsheetID"] as? String ?? ""
 
         networkTimeoutSeconds = dict["NetworkTimeoutSeconds"] as? Double ?? 30.0
     }

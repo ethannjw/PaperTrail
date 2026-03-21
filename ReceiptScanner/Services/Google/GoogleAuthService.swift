@@ -4,6 +4,7 @@
 
 import Foundation
 import UIKit
+import Combine
 import AuthenticationServices
 import CryptoKit
 
@@ -28,7 +29,7 @@ final class GoogleAuthService: NSObject, ObservableObject {
     @Published var isLoading: Bool = false
 
     private let scopes = [
-        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive",
         "https://www.googleapis.com/auth/spreadsheets"
     ]
 
@@ -121,6 +122,7 @@ final class GoogleAuthService: NSObject, ObservableObject {
                 }
             }
             session.prefersEphemeralWebBrowserSession = false
+            session.presentationContextProvider = self
             self.webSession = session
             session.start()
         }
@@ -247,5 +249,20 @@ final class GoogleAuthService: NSObject, ObservableObject {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+// MARK: - ASWebAuthenticationPresentationContextProviding
+
+extension GoogleAuthService: ASWebAuthenticationPresentationContextProviding {
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        MainActor.assumeIsolated {
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first
+            else {
+                return ASPresentationAnchor()
+            }
+            return window
+        }
     }
 }

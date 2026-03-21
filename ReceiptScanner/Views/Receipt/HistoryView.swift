@@ -16,11 +16,12 @@ struct HistoryView: View {
             let matchesSearch = searchText.isEmpty
                 || receipt.merchant.localizedCaseInsensitiveContains(searchText)
                 || receipt.date.contains(searchText)
+                || (receipt.purpose?.localizedCaseInsensitiveContains(searchText) ?? false)
             let matchesCategory = selectedFilter == nil
                 || receipt.category == selectedFilter?.rawValue
             return matchesSearch && matchesCategory
         }
-        .sorted { ($0.capturedAt) > ($1.capturedAt) }
+        .sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -55,17 +56,56 @@ struct HistoryView: View {
                     .background(Color.orange.opacity(0.15))
                 }
 
-                List {
-                    ForEach(filtered) { receipt in
-                        NavigationLink(destination: ReceiptDetailView(receipt: receipt)) {
-                            ReceiptRow(receipt: receipt)
+                if store.isLoading && store.receipts.isEmpty {
+                    ProgressView("Loading from Sheets...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filtered.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.largeTitle)
+                            .foregroundColor(.secondary)
+                        Text("No receipts found")
+                            .font(.headline)
+                        Text("Scan a receipt or pull to refresh from Google Sheets.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 60)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(filtered) { receipt in
+                            NavigationLink(destination: ReceiptDetailView(receipt: receipt)) {
+                                ReceiptRow(receipt: receipt)
+                            }
                         }
                     }
+                    .listStyle(.insetGrouped)
+                    .searchable(text: $searchText, prompt: "Search merchant, date, or purpose")
+                    .refreshable {
+                        await store.refreshFromSheets()
+                    }
                 }
-                .listStyle(.insetGrouped)
-                .searchable(text: $searchText, prompt: "Search merchant or date")
             }
             .navigationTitle("History")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task { await store.refreshFromSheets() }
+                    } label: {
+                        if store.isLoading {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(store.isLoading)
+                }
+            }
+            .task {
+                await store.refreshFromSheets()
+            }
         }
     }
 }
@@ -152,7 +192,16 @@ struct ReceiptDetailView: View {
 
             Section("Amount") {
                 LabeledContent("Total",    value: String(format: "%.2f %@", receipt.total, receipt.currency))
+                if let tax = receipt.taxAmount, tax > 0 {
+                    LabeledContent("Tax", value: String(format: "%.2f %@", tax, receipt.currency))
+                }
                 LabeledContent("Items",    value: "\(receipt.items.count)")
+            }
+
+            if let purpose = receipt.purpose, !purpose.isEmpty {
+                Section("Description") {
+                    Text(purpose)
+                }
             }
 
             if !receipt.items.isEmpty {
@@ -171,9 +220,13 @@ struct ReceiptDetailView: View {
                 }
             }
 
-            Section("Links") {
+            Section("Sync") {
+                LabeledContent("Status", value: receipt.syncStatus.rawValue.capitalized)
                 if let link = receipt.imageDriveURL, let url = URL(string: link) {
                     Link("View in Google Drive", destination: url)
+                }
+                if let filename = receipt.suggestedFilename {
+                    LabeledContent("Filename", value: filename)
                 }
                 LabeledContent("Receipt ID", value: receipt.id.uuidString.prefix(8).description)
             }
@@ -182,6 +235,14 @@ struct ReceiptDetailView: View {
                 Section {
                     Label("Possible duplicate detected", systemImage: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
+                }
+            }
+
+            if let notes = receipt.confidenceNotes, !notes.isEmpty {
+                Section("AI Confidence") {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }

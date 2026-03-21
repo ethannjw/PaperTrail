@@ -1,6 +1,6 @@
 // GoogleDriveService.swift
 // Uploads receipt images to Google Drive using the Drive REST API v3.
-// Uses multipart upload for files with metadata in one request.
+// Resolves folder by name (creating if needed), uses multipart upload.
 
 import Foundation
 import UIKit
@@ -8,65 +8,142 @@ import UIKit
 final class GoogleDriveService {
 
     private let authService: GoogleAuthService
-    private let config = AppConfig.shared
+    private let appSettings: AppSettings
 
-    init(authService: GoogleAuthService) {
+    // Cache resolved folder ID to avoid repeated lookups
+    private var resolvedFolderID: String?
+
+    init(authService: GoogleAuthService, appSettings: AppSettings) {
         self.authService = authService
+        self.appSettings = appSettings
     }
 
     // MARK: - Public API
 
-    /// Upload a receipt image to Drive. Returns shareable web link.
-    /// - Parameters:
-    ///   - image: The captured receipt image.
-    ///   - receipt: Associated receipt for naming.
-    /// - Returns: Web view link (shareable URL).
-    func uploadReceiptImage(
-        _ image: UIImage,
+    /// Upload a receipt PDF to Drive. Falls back to JPEG if no PDF available.
+    func uploadReceipt(
+        image: UIImage,
         receipt: Receipt
     ) async throws -> String {
         let token = try await authService.validAccessToken()
-        let imageData = try compressImage(image)
-        let filename  = buildFilename(receipt: receipt)
-        let metadata  = buildMetadata(filename: filename)
+        let folderID = try await resolveFolderID(token: token)
+
+        let baseFilename = buildBaseFilename(receipt: receipt)
+
+        // Prefer PDF upload
+        let pdfData = PDFGenerator.generatePDF(from: image, receipt: receipt)
+        let filename = "\(baseFilename).pdf"
+        let metadata = buildMetadata(filename: filename, mimeType: "application/pdf", folderID: folderID)
 
         let response = try await performMultipartUpload(
             token: token,
-            imageData: imageData,
+            fileData: pdfData,
+            contentType: "application/pdf",
             metadata: metadata
         )
 
-        // Make file publicly readable (view only)
         try await makePubliclyReadable(fileID: response.id, token: token)
 
         return response.webViewLink ?? "https://drive.google.com/file/d/\(response.id)/view"
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Folder Resolution
 
-    private func compressImage(_ image: UIImage) throws -> Data {
-        let resized = image.resizedIfNeeded(maxDimension: 2000)
-        guard let data = resized.jpegData(compressionQuality: 0.90) else {
-            throw AppError.imageCaptureFailed
+    /// Finds a Drive folder by name, or creates it. Returns the folder ID.
+    private func resolveFolderID(token: String) async throws -> String? {
+        let folderInput = appSettings.googleDriveFolderID.trimmingCharacters(in: .whitespaces)
+        guard !folderInput.isEmpty else { return nil }
+
+        // If a display name is set, the ID was picked from the selector — use directly
+        if !appSettings.googleDriveFolderName.isEmpty {
+            return folderInput
         }
-        return data
+
+        // If no spaces and reasonably long, treat as an ID
+        if !folderInput.contains(" ") && folderInput.count > 10 {
+            return folderInput
+        }
+        let folderName = folderInput
+
+        // Check cache
+        if let cached = resolvedFolderID { return cached }
+
+        // Search for existing folder by name
+        if let existingID = try await findFolder(named: folderName, token: token) {
+            resolvedFolderID = existingID
+            return existingID
+        }
+
+        // Create the folder
+        let newID = try await createFolder(named: folderName, token: token)
+        resolvedFolderID = newID
+        return newID
     }
 
-    private func buildFilename(receipt: Receipt) -> String {
+    private func findFolder(named name: String, token: String) async throws -> String? {
+        let query = "name='\(name)' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        var components = URLComponents(string: "https://www.googleapis.com/drive/v3/files")!
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "fields", value: "files(id,name)"),
+            URLQueryItem(name: "pageSize", value: "1")
+        ]
+
+        var request = URLRequest(url: components.url!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let files = json?["files"] as? [[String: Any]]
+        return files?.first?["id"] as? String
+    }
+
+    private func createFolder(named name: String, token: String) async throws -> String {
+        let body: [String: Any] = [
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder"
+        ]
+
+        var request = URLRequest(url: URL(string: "https://www.googleapis.com/drive/v3/files?fields=id")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let errBody = String(data: data, encoding: .utf8) ?? ""
+            throw AppError.googleDriveUploadFailed("Failed to create folder: \(errBody)")
+        }
+
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let id = json?["id"] as? String else {
+            throw AppError.googleDriveUploadFailed("No folder ID in create response")
+        }
+        return id
+    }
+
+    // MARK: - Private Helpers
+
+    private func buildBaseFilename(receipt: Receipt) -> String {
+        if let suggested = receipt.suggestedFilename, !suggested.isEmpty {
+            return PDFGenerator.sanitizeFilename(suggested)
+        }
         let safe = receipt.merchant
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
-        let date = receipt.date.isEmpty ? ISO8601DateFormatter().string(from: Date()).prefix(10) : receipt.date
-        return "receipt_\(safe)_\(date)_\(receipt.id.uuidString.prefix(8)).jpg"
+        let date = receipt.date.isEmpty
+            ? String(ISO8601DateFormatter().string(from: Date()).prefix(10))
+            : receipt.date
+        return "\(date)_\(safe)_\(String(format: "%.2f", receipt.total))_\(receipt.currency)"
     }
 
-    private func buildMetadata(filename: String) -> [String: Any] {
+    private func buildMetadata(filename: String, mimeType: String, folderID: String?) -> [String: Any] {
         var meta: [String: Any] = [
             "name": filename,
-            "mimeType": "image/jpeg"
+            "mimeType": mimeType
         ]
-        let folderID = config.googleDriveFolderID
-        if !folderID.isEmpty && folderID != "YOUR_GOOGLE_DRIVE_FOLDER_ID" {
+        if let folderID, !folderID.isEmpty {
             meta["parents"] = [folderID]
         }
         return meta
@@ -81,22 +158,21 @@ final class GoogleDriveService {
 
     private func performMultipartUpload(
         token: String,
-        imageData: Data,
+        fileData: Data,
+        contentType: String,
         metadata: [String: Any]
     ) async throws -> DriveUploadResponse {
         let boundary = "Boundary-\(UUID().uuidString)"
         let metadataJSON = try JSONSerialization.data(withJSONObject: metadata)
 
         var body = Data()
-        // Metadata part
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Type: application/json; charset=UTF-8\r\n\r\n".data(using: .utf8)!)
         body.append(metadataJSON)
         body.append("\r\n".data(using: .utf8)!)
-        // Image part
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
         let uploadURL = URL(
@@ -111,7 +187,7 @@ final class GoogleDriveService {
             forHTTPHeaderField: "Content-Type"
         )
         request.httpBody = body
-        request.timeoutInterval = 60 // Uploads can take longer
+        request.timeoutInterval = 60
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -123,8 +199,7 @@ final class GoogleDriveService {
             throw AppError.googleDriveUploadFailed("HTTP \(http.statusCode): \(errBody)")
         }
 
-        let decoded = try JSONDecoder().decode(DriveUploadResponse.self, from: data)
-        return decoded
+        return try JSONDecoder().decode(DriveUploadResponse.self, from: data)
     }
 
     // MARK: - Permissions
@@ -143,9 +218,8 @@ final class GoogleDriveService {
         guard let http = response as? HTTPURLResponse,
               (200...299).contains(http.statusCode)
         else {
-            // Non-fatal: file uploaded but not shared publicly
-            // Log and continue
             print("[GoogleDrive] Warning: Could not set public permission on \(fileID)")
+            return
         }
     }
 }

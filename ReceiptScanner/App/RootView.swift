@@ -42,6 +42,8 @@ struct RootView: View {
 }
 
 // MARK: - Scan Tab Wrapper
+// Uses a two-layer approach: outer view captures @EnvironmentObject,
+// inner view creates @StateObject with the real dependencies.
 
 private struct ScanTab: View {
     @EnvironmentObject var appSettings:   AppSettings
@@ -49,15 +51,35 @@ private struct ScanTab: View {
     @EnvironmentObject var analyticsStore: AnalyticsStore
     @ObservedObject var googleAuth: GoogleAuthService
 
+    var body: some View {
+        ScanTabInner(
+            appSettings: appSettings,
+            googleAuth: googleAuth,
+            offlineQueue: offlineQueue,
+            analyticsStore: analyticsStore
+        )
+    }
+}
+
+private struct ScanTabInner: View {
+    let appSettings: AppSettings
+    let googleAuth: GoogleAuthService
+    let offlineQueue: OfflineQueueManager
+    let analyticsStore: AnalyticsStore
+
     @StateObject private var viewModel: CameraViewModel
 
-    init(googleAuth: GoogleAuthService) {
+    init(appSettings: AppSettings, googleAuth: GoogleAuthService,
+         offlineQueue: OfflineQueueManager, analyticsStore: AnalyticsStore) {
+        self.appSettings = appSettings
         self.googleAuth = googleAuth
+        self.offlineQueue = offlineQueue
+        self.analyticsStore = analyticsStore
         _viewModel = StateObject(wrappedValue: CameraViewModel(
-            appSettings: AppSettings(),
+            appSettings: appSettings,
             googleAuth: googleAuth,
-            offlineQueue: OfflineQueueManager(),
-            analyticsStore: AnalyticsStore()
+            offlineQueue: offlineQueue,
+            analyticsStore: analyticsStore
         ))
     }
 
@@ -80,7 +102,7 @@ private struct FlowCoordinator: View {
         ZStack {
             switch viewModel.stage {
             case .idle, .authorized, .capturing:
-                CameraView(viewModel: viewModel)
+                ScanLandingView(viewModel: viewModel)
 
             case .processing(let msg):
                 processingView(msg)
@@ -95,7 +117,7 @@ private struct FlowCoordinator: View {
                 SuccessOverlay(receipt: receipt) { viewModel.retakePhoto() }
 
             case .failed(let error):
-                CameraView(viewModel: viewModel)
+                ScanLandingView(viewModel: viewModel)
                     .overlay(alignment: .top) {
                         ErrorBanner(error: error) { viewModel.stage = .idle }
                             .padding(.top, 60)
@@ -103,6 +125,17 @@ private struct FlowCoordinator: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.stage == .idle)
+        .sheet(isPresented: $viewModel.showDocumentScanner) {
+            DocumentScannerView(
+                onScanComplete: { image in
+                    viewModel.showDocumentScanner = false
+                    viewModel.handleDocumentScanResult(image)
+                },
+                onCancel: {
+                    viewModel.showDocumentScanner = false
+                }
+            )
+        }
     }
 
     @ViewBuilder
@@ -115,9 +148,49 @@ private struct FlowCoordinator: View {
                     .ignoresSafeArea()
                     .blur(radius: 8)
             } else {
-                Color.black.ignoresSafeArea()
+                Color(.systemGroupedBackground).ignoresSafeArea()
             }
             LoadingOverlay(message: msg)
+        }
+    }
+}
+
+// MARK: - Scan Landing View
+
+private struct ScanLandingView: View {
+    @ObservedObject var viewModel: CameraViewModel
+
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            Image(systemName: "doc.text.viewfinder")
+                .font(.system(size: 72))
+                .foregroundColor(.accentColor)
+
+            VStack(spacing: 8) {
+                Text("Scan Receipt")
+                    .font(.title.bold())
+                Text("Capture a receipt to extract and save expense data")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+
+            Button {
+                viewModel.showDocumentScanner = true
+            } label: {
+                Label("Scan Receipt", systemImage: "camera.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.horizontal, 40)
+
+            Spacer()
         }
     }
 }

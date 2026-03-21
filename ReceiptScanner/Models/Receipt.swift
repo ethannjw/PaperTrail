@@ -14,13 +14,22 @@ struct Receipt: Identifiable, Codable, Equatable {
     var currency: String
     var items: [ReceiptItem]
 
-    // App-managed metadata (not returned by AI)
+    // AI-extracted enrichment fields
+    var taxAmount: Double?
+    var receiptNumber: String?
+    var purpose: String?
+    var suggestedFilename: String?
+    var confidenceNotes: String?
+
+    // App-managed metadata
     var category: String?
     var imageLocalURL: URL?
+    var pdfLocalURL: URL?
     var imageDriveURL: String?
     var capturedAt: Date
     var submittedAt: Date?
     var isDuplicate: Bool
+    var syncStatus: SyncStatus
 
     // MARK: - Init
     init(
@@ -30,33 +39,49 @@ struct Receipt: Identifiable, Codable, Equatable {
         total: Double = 0,
         currency: String = "USD",
         items: [ReceiptItem] = [],
+        taxAmount: Double? = nil,
+        receiptNumber: String? = nil,
+        purpose: String? = nil,
+        suggestedFilename: String? = nil,
+        confidenceNotes: String? = nil,
         category: String? = nil,
         imageLocalURL: URL? = nil,
+        pdfLocalURL: URL? = nil,
         imageDriveURL: String? = nil,
         capturedAt: Date = Date(),
         submittedAt: Date? = nil,
-        isDuplicate: Bool = false
+        isDuplicate: Bool = false,
+        syncStatus: SyncStatus = .pending
     ) {
-        self.id             = id
-        self.merchant       = merchant
-        self.date           = date
-        self.total          = total
-        self.currency       = currency
-        self.items          = items
-        self.category       = category
-        self.imageLocalURL  = imageLocalURL
-        self.imageDriveURL  = imageDriveURL
-        self.capturedAt     = capturedAt
-        self.submittedAt    = submittedAt
-        self.isDuplicate    = isDuplicate
+        self.id                = id
+        self.merchant          = merchant
+        self.date              = date
+        self.total             = total
+        self.currency          = currency
+        self.items             = items
+        self.taxAmount         = taxAmount
+        self.receiptNumber     = receiptNumber
+        self.purpose           = purpose
+        self.suggestedFilename = suggestedFilename
+        self.confidenceNotes   = confidenceNotes
+        self.category          = category
+        self.imageLocalURL     = imageLocalURL
+        self.pdfLocalURL       = pdfLocalURL
+        self.imageDriveURL     = imageDriveURL
+        self.capturedAt        = capturedAt
+        self.submittedAt       = submittedAt
+        self.isDuplicate       = isDuplicate
+        self.syncStatus        = syncStatus
     }
+}
 
-    // MARK: - Coding keys (only encode AI-facing fields for API payloads)
-    enum CodingKeys: String, CodingKey {
-        case id, merchant, date, total, currency, items
-        case category, imageLocalURL, imageDriveURL
-        case capturedAt, submittedAt, isDuplicate
-    }
+// MARK: - Sync Status
+
+enum SyncStatus: String, Codable, Equatable {
+    case pending
+    case uploading
+    case synced
+    case failed
 }
 
 // MARK: - ReceiptItem
@@ -97,16 +122,47 @@ struct AIReceiptResponse: Decodable {
     let date: String
     let total: Double
     let currency: String
+    let taxAmount: Double?
+    let receiptNumber: String?
+    let purpose: String?
+    let suggestedFilename: String?
+    let confidenceNotes: String?
     let items: [ReceiptItem]
+
+    enum CodingKeys: String, CodingKey {
+        case merchant, date, total, currency, items
+        case taxAmount = "tax_amount"
+        case receiptNumber = "receipt_number"
+        case purpose
+        case suggestedFilename = "suggested_filename"
+        case confidenceNotes = "confidence_notes"
+    }
+
+    init(
+        merchant: String, date: String, total: Double, currency: String,
+        taxAmount: Double? = nil, receiptNumber: String? = nil, purpose: String? = nil,
+        suggestedFilename: String? = nil, confidenceNotes: String? = nil,
+        items: [ReceiptItem] = []
+    ) {
+        self.merchant = merchant; self.date = date; self.total = total
+        self.currency = currency; self.taxAmount = taxAmount
+        self.receiptNumber = receiptNumber; self.purpose = purpose; self.suggestedFilename = suggestedFilename
+        self.confidenceNotes = confidenceNotes; self.items = items
+    }
 
     /// Convert to a full Receipt model, preserving app metadata.
     func toReceipt(preserving existing: Receipt? = nil) -> Receipt {
         var r = existing ?? Receipt()
-        r.merchant = merchant
-        r.date     = date
-        r.total    = total
-        r.currency = currency
-        r.items    = items
+        r.merchant          = merchant
+        r.date              = date
+        r.total             = total
+        r.currency          = currency
+        r.items             = items
+        r.taxAmount         = taxAmount
+        r.receiptNumber     = receiptNumber
+        r.purpose           = purpose
+        r.suggestedFilename = suggestedFilename
+        r.confidenceNotes   = confidenceNotes
         return r
     }
 }

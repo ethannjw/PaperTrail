@@ -56,7 +56,7 @@ private struct ReceiptFrameOverlay: View {
     var body: some View {
         GeometryReader { geo in
             let width  = geo.size.width * 0.88
-            let height = width * 1.5  // Typical receipt aspect ratio
+            let height = width * 1.5
             let rect   = CGRect(
                 x: (geo.size.width  - width)  / 2,
                 y: (geo.size.height - height) / 2,
@@ -65,22 +65,28 @@ private struct ReceiptFrameOverlay: View {
             )
 
             ZStack {
-                // Dim outside the frame
-                Color.black.opacity(0.45)
-                    .mask(
-                        Rectangle()
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .frame(width: width, height: height)
-                                    .blendMode(.destinationOut)
-                            )
-                    )
+                // Dim outside the cutout using a shape with an inner hole
+                DimmedCutout(cutout: rect, cornerRadius: 12)
+                    .fill(Color.black.opacity(0.45))
 
                 // Corner brackets
                 CornerBrackets(rect: rect)
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// Shape that fills the entire frame EXCEPT for a rounded-rect cutout.
+private struct DimmedCutout: Shape {
+    let cutout: CGRect
+    let cornerRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(rect)
+        path.addRoundedRect(in: cutout, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+        return path
     }
 }
 

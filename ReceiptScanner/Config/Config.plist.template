@@ -8,9 +8,9 @@
 -->
 <plist version="1.0">
 <dict>
-    <!-- AI PROVIDER: "openai" | "gemini" -->
+    <!-- AI PROVIDER: "openai" | "gemini" | "claude" | "mock" -->
     <key>AIProvider</key>
-    <string>openai</string>
+    <string>mock</string>
 
     <!-- PROCESSING MODE: "vision" | "ocr_plus_llm" -->
     <key>ProcessingMode</key>
@@ -22,6 +22,9 @@
 
     <key>GeminiBaseURL</key>
     <string>https://generativelanguage.googleapis.com</string>
+
+    <key>ClaudeBaseURL</key>
+    <string>https://api.anthropic.com</string>
 
     <!-- GOOGLE OAUTH 2.0 (from Google Cloud Console) -->
     <key>GoogleClientID</key>

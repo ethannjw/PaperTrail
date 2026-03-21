@@ -1,30 +1,30 @@
-// OpenAIVisionService.swift
-// Sends a receipt image directly to the OpenAI Chat Completions API
-// using the gpt-4o vision model and returns structured JSON.
+// ClaudeVisionService.swift
+// Sends a receipt image to the Anthropic Claude Messages API
+// using claude-sonnet-4-20250514 vision and returns structured JSON.
 
 import Foundation
 import UIKit
 
-final class OpenAIVisionService: AIService {
+final class ClaudeVisionService: AIService {
 
     var appSettings: AppSettings?
 
     // MARK: - Configuration
-    private let model = "gpt-4o"
+    private let model = "claude-sonnet-4-20250514"
     private let maxTokens = 1024
     private let baseURL: URL
 
     private var apiKey: String {
         get throws {
-            guard let key = try? KeychainService.load(key: .openAIAPIKey), !key.isEmpty else {
-                throw AppError.missingAPIKey("OpenAI")
+            guard let key = try? KeychainService.load(key: .claudeAPIKey), !key.isEmpty else {
+                throw AppError.missingAPIKey("Claude")
             }
             return key
         }
     }
 
     init(baseURL: URL? = nil) {
-        self.baseURL = baseURL ?? AppConfig.shared.openAIBaseURL
+        self.baseURL = baseURL ?? AppConfig.shared.claudeBaseURL
     }
 
     // MARK: - AIService
@@ -39,7 +39,6 @@ final class OpenAIVisionService: AIService {
     // MARK: - Private Helpers
 
     private func encodeImage(_ image: UIImage) throws -> String {
-        // Resize if > 4MB to stay within API limits
         let compressed = image.resizedIfNeeded(maxDimension: 1500)
         guard let jpegData = compressed.jpegData(compressionQuality: 0.85) else {
             throw AppError.imageCaptureFailed
@@ -51,24 +50,22 @@ final class OpenAIVisionService: AIService {
         return [
             "model": model,
             "max_tokens": maxTokens,
+            "system": systemPrompt,
             "messages": [
-                [
-                    "role": "system",
-                    "content": systemPrompt
-                ],
                 [
                     "role": "user",
                     "content": [
                         [
-                            "type": "text",
-                            "text": ReceiptPrompts.visionUserPrompt
+                            "type": "image",
+                            "source": [
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": base64Image
+                            ]
                         ],
                         [
-                            "type": "image_url",
-                            "image_url": [
-                                "url": "data:image/jpeg;base64,\(base64Image)",
-                                "detail": "high"
-                            ]
+                            "type": "text",
+                            "text": ReceiptPrompts.visionUserPrompt
                         ]
                     ]
                 ]
@@ -77,11 +74,12 @@ final class OpenAIVisionService: AIService {
     }
 
     private func performRequest(body: [String: Any]) async throws -> String {
-        let url = baseURL.appendingPathComponent("/v1/chat/completions")
+        let url = baseURL.appendingPathComponent("/v1/messages")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(try apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(try apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.timeoutInterval = AppConfig.shared.networkTimeoutSeconds
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -89,25 +87,22 @@ final class OpenAIVisionService: AIService {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let http = response as? HTTPURLResponse else {
-            throw AppError.unknown("Non-HTTP response from OpenAI")
+            throw AppError.unknown("Non-HTTP response from Claude")
         }
         guard http.statusCode == 200 else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw AppError.httpError(http.statusCode, body)
+            let errBody = String(data: data, encoding: .utf8) ?? ""
+            throw AppError.httpError(http.statusCode, errBody)
         }
 
-        // Extract content from choices[0].message.content
+        // Extract content[0].text from Claude response
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard
-            let choices = json?["choices"] as? [[String: Any]],
-            let first   = choices.first,
-            let message = first["message"] as? [String: Any],
-            let content = message["content"] as? String
+            let content = json?["content"] as? [[String: Any]],
+            let first = content.first,
+            let text = first["text"] as? String
         else {
-            throw AppError.invalidJSONResponse("OpenAI response structure unexpected")
+            throw AppError.invalidJSONResponse("Claude response structure unexpected")
         }
-        return content
+        return text
     }
 }
-
-// resizedIfNeeded is defined as a shared UIImage extension in GeminiVisionService.swift

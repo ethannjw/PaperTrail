@@ -7,6 +7,8 @@ import UIKit
 
 final class GeminiVisionService: AIService {
 
+    var appSettings: AppSettings?
+
     // MARK: - Configuration
     private let model = "gemini-1.5-flash"
     private let baseURL: URL
@@ -45,7 +47,7 @@ final class GeminiVisionService: AIService {
 
     private func buildRequestBody(base64Image: String) -> [String: Any] {
         // Gemini uses a "contents" array with "parts"
-        let systemPart: [String: Any] = ["text": ReceiptPrompts.systemPrompt]
+        let systemPart: [String: Any] = ["text": systemPrompt]
         let userTextPart: [String: Any] = ["text": ReceiptPrompts.visionUserPrompt]
         let imagePart: [String: Any] = [
             "inline_data": [
@@ -109,16 +111,4 @@ final class GeminiVisionService: AIService {
     }
 }
 
-// MARK: - UIImage Resize Helper (shared)
-
-extension UIImage {
-    func resizedIfNeeded(maxDimension: CGFloat) -> UIImage {
-        let longest = max(size.width, size.height)
-        guard longest > maxDimension else { return self }
-        let scale = maxDimension / longest
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-        return UIGraphicsImageRenderer(size: newSize).image { _ in
-            self.draw(in: CGRect(origin: .zero, size: newSize))
-        }
-    }
-}
+// resizedIfNeeded is defined in UIImage+Extensions.swift

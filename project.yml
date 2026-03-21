@@ -1,0 +1,39 @@
+name: PaperTrail
+options:
+  bundleIdPrefix: com.receiptscanner
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "16.0"
+
+targets:
+  PaperTrail:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReceiptScanner
+        excludes:
+          - "Config/Config.plist.template"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.e10enterprise.papertrail
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSCameraUsageDescription: "ReceiptScanner needs camera access to scan receipts."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        SWIFT_VERSION: "5.9"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_STRICT_CONCURRENCY: minimal
+    info:
+      path: ReceiptScanner/Info.plist
+      properties:
+        CFBundleDisplayName: PaperTrail
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.googleusercontent.apps.821403358204-l7bg3a3c069ku3qtne01nbt6doof483u
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true

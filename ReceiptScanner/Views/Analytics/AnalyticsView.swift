@@ -86,16 +86,60 @@ struct AnalyticsView: View {
                     }
 
                     if summaries.isEmpty {
-                        ContentUnavailableView(
-                            "No Data Yet",
-                            systemImage: "chart.bar.xaxis",
-                            description: Text("Scan and submit receipts to see spending analytics.")
-                        )
+                        if #available(iOS 17.0, *) {
+                            ContentUnavailableView(
+                                "No Data Yet",
+                                systemImage: "chart.bar.xaxis",
+                                description: Text("Scan and submit receipts to see spending analytics.")
+                            )
+                        } else {
+                            VStack(spacing: 12) {
+                                Image(systemName: "chart.bar.xaxis")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.secondary)
+                                Text("No Data Yet")
+                                    .font(.headline)
+                                Text("Scan and submit receipts to see spending analytics.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 60)
+                        }
                     }
                 }
                 .padding(.vertical)
             }
             .navigationTitle("Analytics")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task { await store.refreshFromSheets() }
+                    } label: {
+                        if store.isLoading {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(store.isLoading)
+                }
+            }
+            .task {
+                // Auto-refresh from Sheets when tab appears
+                if store.receipts.isEmpty {
+                    await store.refreshFromSheets()
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let error = store.lastSyncError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.red.cornerRadius(8))
+                        .padding()
+                }
+            }
         }
     }
 

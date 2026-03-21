@@ -36,13 +36,15 @@ final class GoogleSheetsService {
         try await appendRow(for: receipt, spreadsheetID: ssID, sheetTab: tab, token: token)
     }
 
-    func fetchAllReceipts() async throws -> [[Any]] {
+    /// Returns (headers, dataRows) — headers are column names from row 1.
+    func fetchAllReceiptsWithHeaders() async throws -> (headers: [String], rows: [[Any]]) {
         let token = try await authService.validAccessToken()
         let ssID = try await resolveSpreadsheetID(token: token)
         let tab = try await resolveSheetTab(spreadsheetID: ssID, token: token)
-        let range = "\(tab)!A2:L"
+        // Fetch ALL rows including header
+        let range = "\(tab)!A1:Z"
         let url = URL(
-            string: "https://sheets.googleapis.com/v4/spreadsheets/\(ssID)/values/\(range)"
+            string: "https://sheets.googleapis.com/v4/spreadsheets/\(ssID)/values/\(range)?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING"
         )!
 
         var request = URLRequest(url: url)
@@ -54,7 +56,12 @@ final class GoogleSheetsService {
         }
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["values"] as? [[Any]] ?? []
+        let allRows = json?["values"] as? [[Any]] ?? []
+
+        guard let headerRow = allRows.first else { return ([], []) }
+        let headers = headerRow.map { "\($0)" }
+        let dataRows = Array(allRows.dropFirst())
+        return (headers, dataRows)
     }
 
     // MARK: - Spreadsheet Resolution
@@ -211,7 +218,7 @@ final class GoogleSheetsService {
     private func appendRow(for receipt: Receipt, spreadsheetID: String, sheetTab: String, token: String) async throws {
         let range = "\(sheetTab)!A:L"
         let url = URL(
-            string: "https://sheets.googleapis.com/v4/spreadsheets/\(spreadsheetID)/values/\(range):append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS"
+            string: "https://sheets.googleapis.com/v4/spreadsheets/\(spreadsheetID)/values/\(range):append?valueInputOption=RAW&insertDataOption=INSERT_ROWS"
         )!
 
         let body: [String: Any] = [

@@ -70,7 +70,7 @@
 		0506CE4933BD97D3ABC26C9C /* LoadingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingOverlay.swift; sourceTree = "<group>"; };
 		05BDB9720F4307A75E8F0FF1 /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
 		07BC49F15BB8ACA44F44DE0B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
-		10ECF7FDC884C8C6935C247C /* PaperTrail.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PaperTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		10ECF7FDC884C8C6935C247C /* PaperTrail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PaperTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		12130C7F22B6D9380BA8E269 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		139BA1356694AE817E9A99B8 /* MockAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIService.swift; sourceTree = "<group>"; };
 		1CC7BBD68704B4D450D48FB2 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
@@ -578,6 +578,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M794943H4X;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaperTrail/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ReceiptScanner needs camera access to scan receipts.";
@@ -604,6 +605,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M794943H4X;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaperTrail/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ReceiptScanner needs camera access to scan receipts.";

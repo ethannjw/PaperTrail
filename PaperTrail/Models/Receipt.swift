@@ -194,8 +194,9 @@ extension Receipt {
             issues.append("Date '\(date)' is not in YYYY-MM-DD format.")
         }
 
-        if total <= 0 {
-            issues.append("Total must be greater than zero.")
+        // total can be negative (refunds/returns) — only warn if exactly 0
+        if total == 0 {
+            issues.append("Total is zero — is this correct?")
         }
 
         if currency.count != 3 {

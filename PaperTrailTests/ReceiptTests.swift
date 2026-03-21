@@ -45,14 +45,14 @@ final class ReceiptTests: XCTestCase {
         XCTAssertTrue(r.validate().isEmpty)
     }
 
-    func test_validate_zeroTotal_returnsIssue() {
+    func test_validate_zeroTotal_returnsWarning() {
         let r = Receipt(merchant: "Store", date: "2026-03-21", total: 0, currency: "USD")
-        XCTAssertTrue(r.validate().contains { $0.contains("greater than zero") })
+        XCTAssertTrue(r.validate().contains { $0.contains("zero") })
     }
 
-    func test_validate_negativeTotal_returnsIssue() {
+    func test_validate_negativeTotal_noIssue() {
         let r = Receipt(merchant: "Store", date: "2026-03-21", total: -5, currency: "USD")
-        XCTAssertTrue(r.validate().contains { $0.contains("greater than zero") })
+        XCTAssertTrue(r.validate().isEmpty)
     }
 
     func test_validate_invalidCurrency_returnsIssue() {

@@ -46,13 +46,18 @@ final class AnalyticsStore: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let rows = try await service.fetchAllReceipts()
-            let parsed = parseRows(rows)
+            let (headers, rows) = try await service.fetchAllReceiptsWithHeaders()
+            NSLog("[PaperTrail] Headers: %@", headers.joined(separator: " | "))
+            if let firstRow = rows.first {
+                NSLog("[PaperTrail] First row: %@", firstRow.map { "\($0)" }.joined(separator: " | "))
+            }
+            let parsed = parseRows(rows, headers: headers)
+            NSLog("[PaperTrail] Parsed %d receipts. First date: '%@'", parsed.count, parsed.first?.date ?? "nil")
             receipts = parsed
             saveCache()
         } catch {
+            NSLog("[PaperTrail] Fetch error: %@", error.localizedDescription)
             lastSyncError = error.localizedDescription
-            // Keep existing cached data
         }
     }
 
@@ -65,35 +70,44 @@ final class AnalyticsStore: ObservableObject {
 
     // MARK: - Parse Sheet Rows into Receipts
 
-    // Column mapping: A=Timestamp, B=Merchant, C=Date, D=Total, E=Currency,
-    //   F=Tax, G=Category, H=Purpose, I=Items Count, J=Image Link,
-    //   K=Suggested Filename, L=Receipt ID
-    private func parseRows(_ rows: [[Any]]) -> [Receipt] {
-        rows.compactMap { row in
-            guard row.count >= 5 else { return nil }
+    // MARK: - Header-Aware Row Parsing
 
-            let merchant = row[safe: 1] as? String ?? ""
-            let date = row[safe: 2] as? String ?? ""
-            let total = parseDouble(row[safe: 3])
-            let currency = row[safe: 4] as? String ?? "USD"
-            let tax = parseDouble(row[safe: 5])
-            let category = row[safe: 6] as? String
-            let purpose = row[safe: 7] as? String
-            let imageLink = row[safe: 9] as? String
-            let suggestedFilename = row[safe: 10] as? String
-            let idString = row[safe: 11] as? String
+    private func parseRows(_ rows: [[Any]], headers: [String]) -> [Receipt] {
+        // Build a column index lookup from header names (case-insensitive)
+        var col: [String: Int] = [:]
+        for (i, h) in headers.enumerated() {
+            col[h.lowercased().trimmingCharacters(in: .whitespaces)] = i
+        }
+
+        return rows.compactMap { row in
+            func str(_ key: String) -> String? {
+                guard let i = col[key], let val = row[safe: i] else { return nil }
+                let s = "\(val)".trimmingCharacters(in: .whitespaces)
+                return s.isEmpty ? nil : s
+            }
+            func num(_ key: String) -> Double {
+                guard let i = col[key] else { return 0 }
+                return parseDouble(row[safe: i])
+            }
+
+            let merchant = str("merchant") ?? ""
+            let date = normalizeDate(str("date") ?? "")
+            let total = num("total")
+
+            // Skip rows with no merchant and no total
+            guard !merchant.isEmpty || total > 0 else { return nil }
 
             return Receipt(
-                id: UUID(uuidString: idString ?? "") ?? UUID(),
                 merchant: merchant,
                 date: date,
                 total: total,
-                currency: currency,
-                taxAmount: tax > 0 ? tax : nil,
-                purpose: (purpose?.isEmpty == true) ? nil : purpose,
-                suggestedFilename: (suggestedFilename?.isEmpty == true) ? nil : suggestedFilename,
-                category: (category?.isEmpty == true) ? nil : category,
-                imageDriveURL: (imageLink?.isEmpty == true) ? nil : imageLink,
+                currency: str("currency") ?? "USD",
+                taxAmount: num("tax") > 0 ? num("tax") : nil,
+                receiptNumber: str("receipt number"),
+                purpose: str("purpose"),
+                suggestedFilename: str("suggested filename"),
+                category: str("category"),
+                imageDriveURL: str("image link"),
                 syncStatus: .synced
             )
         }
@@ -101,8 +115,42 @@ final class AnalyticsStore: ObservableObject {
 
     private func parseDouble(_ value: Any?) -> Double {
         if let d = value as? Double { return d }
-        if let s = value as? String, let d = Double(s) { return d }
+        if let s = value as? String {
+            // Handle currency symbols and commas: "$1,234.56" → 1234.56
+            let cleaned = s.replacingOccurrences(of: "[^0-9.\\-]", with: "", options: .regularExpression)
+            if let d = Double(cleaned) { return d }
+        }
         return 0
+    }
+
+    /// Normalize various date formats to YYYY-MM-DD
+    private func normalizeDate(_ input: String) -> String {
+        let trimmed = input.trimmingCharacters(in: .whitespaces)
+
+        // Already YYYY-MM-DD
+        if trimmed.count == 10 && trimmed.prefix(4).allSatisfy(\.isNumber) && trimmed[trimmed.index(trimmed.startIndex, offsetBy: 4)] == "-" {
+            return trimmed
+        }
+
+        // Try common date formats
+        let formatters: [String] = [
+            "M/d/yyyy", "MM/dd/yyyy", "d/M/yyyy", "dd/MM/yyyy",
+            "MMM d, yyyy", "d MMM yyyy", "yyyy-MM-dd", "yyyy/MM/dd"
+        ]
+        let outputFormatter = DateFormatter()
+        outputFormatter.dateFormat = "yyyy-MM-dd"
+
+        for fmt in formatters {
+            let df = DateFormatter()
+            df.dateFormat = fmt
+            df.locale = Locale(identifier: "en_US_POSIX")
+            if let date = df.date(from: trimmed) {
+                return outputFormatter.string(from: date)
+            }
+        }
+
+        // Last resort: return as-is
+        return trimmed
     }
 
     // MARK: - Queries

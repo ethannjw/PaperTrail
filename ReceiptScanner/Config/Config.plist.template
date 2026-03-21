@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Config.plist.template
+  Copy to Config.plist and fill in your credentials.
+  Add Config.plist to .gitignore — never commit secrets.
+-->
+<plist version="1.0">
+<dict>
+    <!-- AI PROVIDER: "openai" | "gemini" -->
+    <key>AIProvider</key>
+    <string>openai</string>
+
+    <!-- PROCESSING MODE: "vision" | "ocr_plus_llm" -->
+    <key>ProcessingMode</key>
+    <string>vision</string>
+
+    <!-- OPTIONAL: override base URLs for proxy / enterprise -->
+    <key>OpenAIBaseURL</key>
+    <string>https://api.openai.com</string>
+
+    <key>GeminiBaseURL</key>
+    <string>https://generativelanguage.googleapis.com</string>
+
+    <!-- GOOGLE OAUTH 2.0 (from Google Cloud Console) -->
+    <key>GoogleClientID</key>
+    <string>YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com</string>
+
+    <!-- Must match the redirect URI registered in Google Cloud Console -->
+    <key>GoogleRedirectURI</key>
+    <string>com.yourcompany.receiptscanner:/oauth2callback</string>
+
+    <!-- GOOGLE DRIVE: folder ID where receipt images are stored -->
+    <key>GoogleDriveFolderID</key>
+    <string>YOUR_GOOGLE_DRIVE_FOLDER_ID</string>
+
+    <!-- GOOGLE SHEETS: spreadsheet ID to append rows -->
+    <key>GoogleSpreadsheetID</key>
+    <string>YOUR_GOOGLE_SPREADSHEET_ID</string>
+
+    <!-- OPTIONAL: network request timeout in seconds -->
+    <key>NetworkTimeoutSeconds</key>
+    <real>30</real>
+</dict>
+</plist>

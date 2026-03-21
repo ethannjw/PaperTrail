@@ -1,0 +1,23 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcscheme
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Secrets — NEVER commit these
+ReceiptScanner/Config/Config.plist
+
+# SPM
+.build/
+.swiftpm/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# macOS
+.DS_Store

@@ -1,0 +1,17 @@
+// project.pbxproj
+// NOTE: This is a reference scaffold. Open Xcode, create a new iOS App project
+// named "ReceiptScanner" with SwiftUI lifecycle, then add all .swift files from
+// the ReceiptScanner/ directory to the target. See SETUP.md for full instructions.
+//
+// Required Frameworks (add via "Frameworks, Libraries, and Embedded Content"):
+//   - AVFoundation.framework
+//   - Vision.framework
+//   - AuthenticationServices.framework
+//   - CryptoKit (included in Swift Standard Libraries)
+//   - Charts.framework (iOS 16+, included in SDK)
+//   - Security.framework
+//   - Network.framework
+//
+// Required Info.plist keys:
+//   NSCameraUsageDescription  →  "Used to capture receipt images."
+//   CFBundleURLTypes          →  your OAuth redirect URI scheme

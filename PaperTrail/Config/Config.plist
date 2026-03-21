@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AIProvider</key>
+    <string>openai</string>
+
+    <key>ProcessingMode</key>
+    <string>vision</string>
+
+    <key>OpenAIBaseURL</key>
+    <string>https://api.openai.com</string>
+
+    <key>GeminiBaseURL</key>
+    <string>https://generativelanguage.googleapis.com</string>
+
+    <key>ClaudeBaseURL</key>
+    <string>https://api.anthropic.com</string>
+
+    <!-- Google OAuth — get from Google Cloud Console (APIs & Services > Credentials > iOS OAuth client) -->
+    <key>GoogleClientID</key>
+    <string>821403358204-l7bg3a3c069ku3qtne01nbt6doof483u.apps.googleusercontent.com</string>
+
+    <key>GoogleRedirectURI</key>
+    <string>com.googleusercontent.apps.821403358204-l7bg3a3c069ku3qtne01nbt6doof483u:/oauth2callback</string>
+
+    <!-- Optional defaults — user sets these in Settings -->
+    <key>GoogleDriveFolderID</key>
+    <string></string>
+
+    <key>GoogleSpreadsheetID</key>
+    <string></string>
+
+    <key>NetworkTimeoutSeconds</key>
+    <real>30</real>
+</dict>
+</plist>

@@ -32,7 +32,7 @@
 
     <!-- Must match the redirect URI registered in Google Cloud Console -->
     <key>GoogleRedirectURI</key>
-    <string>com.yourcompany.receiptscanner:/oauth2callback</string>
+    <string>com.e10enterprise.papertrail:/oauth2callback</string>
 
     <!-- GOOGLE DRIVE: folder ID where receipt images are stored -->
     <key>GoogleDriveFolderID</key>

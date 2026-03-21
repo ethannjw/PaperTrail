@@ -10,7 +10,7 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: ReceiptScanner
+      - path: PaperTrail
         excludes:
           - "Config/Config.plist.template"
     settings:
@@ -29,9 +29,21 @@ targets:
         CODE_SIGN_STYLE: Automatic
         SWIFT_STRICT_CONCURRENCY: minimal
     info:
-      path: ReceiptScanner/Info.plist
+      path: PaperTrail/Info.plist
       properties:
         CFBundleDisplayName: PaperTrail
+
+  PaperTrailTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PaperTrailTests
+    dependencies:
+      - target: PaperTrail
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.9"
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - com.googleusercontent.apps.821403358204-l7bg3a3c069ku3qtne01nbt6doof483u

@@ -6,7 +6,7 @@ import SwiftUI
 struct SettingsView: View {
 
     @EnvironmentObject var appSettings: AppSettings
-    @ObservedObject var googleAuth: GoogleAuthService
+    @StateObject private var googleAuth = GoogleAuthService()
 
     @State private var openAIKey:     String = ""
     @State private var geminiKey:     String = ""

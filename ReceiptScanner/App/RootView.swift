@@ -32,7 +32,7 @@ struct RootView: View {
                 }
 
             // MARK: - Settings Tab
-            SettingsView(googleAuth: googleAuth)
+            SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }

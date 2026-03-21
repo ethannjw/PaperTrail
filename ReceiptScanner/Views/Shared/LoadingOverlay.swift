@@ -45,7 +45,6 @@ struct SuccessOverlay: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 56))
                     .foregroundColor(.green)
-                    .symbolEffect(.bounce, value: true)
 
                 Text("Receipt Saved!")
                     .font(.title2.bold())

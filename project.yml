@@ -1,4 +1,4 @@
-name: PaperTrail
+name: ReceiptPilot
 options:
   bundleIdPrefix: com.receiptscanner
   deploymentTarget:
@@ -6,16 +6,16 @@ options:
   xcodeVersion: "16.0"
 
 targets:
-  PaperTrail:
+  ReceiptPilot:
     type: application
     platform: iOS
     sources:
-      - path: PaperTrail
+      - path: ReceiptPilot
         excludes:
           - "Config/Config.plist.template"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.e10enterprise.papertrail
+        PRODUCT_BUNDLE_IDENTIFIER: com.e10enterprise.receiptpilot
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
@@ -29,17 +29,17 @@ targets:
         CODE_SIGN_STYLE: Automatic
         SWIFT_STRICT_CONCURRENCY: minimal
     info:
-      path: PaperTrail/Info.plist
+      path: ReceiptPilot/Info.plist
       properties:
-        CFBundleDisplayName: PaperTrail
+        CFBundleDisplayName: ReceiptPilot
 
-  PaperTrailTests:
+  ReceiptPilotTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: PaperTrailTests
+      - path: ReceiptPilotTests
     dependencies:
-      - target: PaperTrail
+      - target: ReceiptPilot
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

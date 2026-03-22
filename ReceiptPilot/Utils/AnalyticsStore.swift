@@ -47,16 +47,16 @@ final class AnalyticsStore: ObservableObject {
 
         do {
             let (headers, rows) = try await service.fetchAllReceiptsWithHeaders()
-            NSLog("[PaperTrail] Headers: %@", headers.joined(separator: " | "))
+            NSLog("[ReceiptPilot] Headers: %@", headers.joined(separator: " | "))
             if let firstRow = rows.first {
-                NSLog("[PaperTrail] First row: %@", firstRow.map { "\($0)" }.joined(separator: " | "))
+                NSLog("[ReceiptPilot] First row: %@", firstRow.map { "\($0)" }.joined(separator: " | "))
             }
             let parsed = parseRows(rows, headers: headers)
-            NSLog("[PaperTrail] Parsed %d receipts. First date: '%@'", parsed.count, parsed.first?.date ?? "nil")
+            NSLog("[ReceiptPilot] Parsed %d receipts. First date: '%@'", parsed.count, parsed.first?.date ?? "nil")
             receipts = parsed
             saveCache()
         } catch {
-            NSLog("[PaperTrail] Fetch error: %@", error.localizedDescription)
+            NSLog("[ReceiptPilot] Fetch error: %@", error.localizedDescription)
             lastSyncError = error.localizedDescription
         }
     }

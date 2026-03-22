@@ -1,10 +1,10 @@
-// PaperTrailApp.swift
-// Entry point for the PaperTrail application.
+// ReceiptPilotApp.swift
+// Entry point for the ReceiptPilot application.
 
 import SwiftUI
 
 @main
-struct PaperTrailApp: App {
+struct ReceiptPilotApp: App {
 
     @StateObject private var appSettings = AppSettings()
     @StateObject private var offlineQueue = OfflineQueueManager()

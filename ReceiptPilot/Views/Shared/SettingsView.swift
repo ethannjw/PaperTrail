@@ -212,7 +212,7 @@ struct SettingsView: View {
                     Text("Save PDFs To")
                 } footer: {
                     Text(savedFolderName.isEmpty
-                         ? "PDFs save to On My iPhone > PaperTrail. Tap to choose iCloud Drive, Google Drive, or any folder."
+                         ? "PDFs save to On My iPhone > ReceiptPilot. Tap to choose iCloud Drive, Google Drive, or any folder."
                          : "Receipt PDFs will be saved to this folder.")
                 }
 

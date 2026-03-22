@@ -191,7 +191,7 @@ final class CameraViewModel: ObservableObject {
                 return
             }
 
-            NSLog("[PaperTrail] Starting submit — sheetID: '%@', sheetName: '%@', folderID: '%@'",
+            NSLog("[ReceiptPilot] Starting submit — sheetID: '%@', sheetName: '%@', folderID: '%@'",
                   appSettings.googleSpreadsheetID, appSettings.googleSpreadsheetName, appSettings.googleDriveFolderID)
 
             // Save PDF to Files app (accessible via iCloud Drive, etc.)
@@ -201,16 +201,16 @@ final class CameraViewModel: ObservableObject {
 
                 // Upload PDF to Google Drive
                 stage = .processing("Uploading to Drive...")
-                NSLog("[PaperTrail] Uploading to Drive...")
+                NSLog("[ReceiptPilot] Uploading to Drive...")
                 receipt.imageDriveURL = try await driveService.uploadReceipt(image: image, receipt: receipt)
-                NSLog("[PaperTrail] Drive upload done: %@", receipt.imageDriveURL ?? "nil")
+                NSLog("[ReceiptPilot] Drive upload done: %@", receipt.imageDriveURL ?? "nil")
             }
 
             // Write to Sheets
             stage = .processing("Saving to Google Sheets...")
-            NSLog("[PaperTrail] Writing to Sheets...")
+            NSLog("[ReceiptPilot] Writing to Sheets...")
             try await sheetsService.appendReceipt(receipt)
-            NSLog("[PaperTrail] Sheets write done")
+            NSLog("[ReceiptPilot] Sheets write done")
 
             // Mark as synced
             receipt.syncStatus = .synced
@@ -221,14 +221,14 @@ final class CameraViewModel: ObservableObject {
             stage = .success(receipt)
 
         } catch let appErr as AppError {
-            NSLog("[PaperTrail] Submit failed (AppError): %@", appErr.localizedDescription)
+            NSLog("[ReceiptPilot] Submit failed (AppError): %@", appErr.localizedDescription)
             receipt.syncStatus = .failed
             if case .networkUnavailable = appErr {
                 try? offlineQueue.enqueue(receipt)
             }
             stage = .failed(appErr)
         } catch {
-            NSLog("[PaperTrail] Submit failed (other): %@", error.localizedDescription)
+            NSLog("[ReceiptPilot] Submit failed (other): %@", error.localizedDescription)
             receipt.syncStatus = .failed
             stage = .failed(.unknown(error.localizedDescription))
         }

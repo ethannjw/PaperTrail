@@ -1,5 +1,5 @@
 import XCTest
-@testable import PaperTrail
+@testable import ReceiptPilot
 
 final class ReceiptTests: XCTestCase {
 

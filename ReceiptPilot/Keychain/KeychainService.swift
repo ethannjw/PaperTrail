@@ -25,12 +25,12 @@ struct KeychainService {
 
     // MARK: - Well-known keys
     enum Key: String {
-        case openAIAPIKey       = "com.papertrail.openai.apikey"
-        case geminiAPIKey       = "com.papertrail.gemini.apikey"
-        case claudeAPIKey       = "com.papertrail.claude.apikey"
-        case googleAccessToken  = "com.papertrail.google.accesstoken"
-        case googleRefreshToken = "com.papertrail.google.refreshtoken"
-        case googleTokenExpiry  = "com.papertrail.google.tokenexpiry"
+        case openAIAPIKey       = "com.receiptpilot.openai.apikey"
+        case geminiAPIKey       = "com.receiptpilot.gemini.apikey"
+        case claudeAPIKey       = "com.receiptpilot.claude.apikey"
+        case googleAccessToken  = "com.receiptpilot.google.accesstoken"
+        case googleRefreshToken = "com.receiptpilot.google.refreshtoken"
+        case googleTokenExpiry  = "com.receiptpilot.google.tokenexpiry"
     }
 
     // MARK: - CRUD

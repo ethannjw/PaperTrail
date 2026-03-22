@@ -25,6 +25,7 @@
 		386A698D71C3B8F50802919B /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07BC49F15BB8ACA44F44DE0B /* AnalyticsView.swift */; };
 		4A49DAB9FDB8E661F2464DEA /* PromptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDFCB7B001E6B1386200AC3 /* PromptEditorView.swift */; };
 		4F2607A4676B68652037EC7F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26443633B71E4F084ED1AF88 /* HistoryView.swift */; };
+		548194663C6ABA99E04A7133 /* PhotoPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA9DB10C74BBE95790A10E0 /* PhotoPickerView.swift */; };
 		5536EF18F409F80992EC40C2 /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44507AA03A4F97A5839CDC4B /* OCRService.swift */; };
 		5A0E2885922ABAC3A530E7A1 /* Receipt.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84775B742AB0C755786CBAC /* Receipt.swift */; };
 		63014EEF15D7E9E4652C2992 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6725FEE325BB99F2B9A000F4 /* AIService.swift */; };
@@ -70,9 +71,10 @@
 		0506CE4933BD97D3ABC26C9C /* LoadingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingOverlay.swift; sourceTree = "<group>"; };
 		05BDB9720F4307A75E8F0FF1 /* DuplicateDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateDetector.swift; sourceTree = "<group>"; };
 		07BC49F15BB8ACA44F44DE0B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
-		10ECF7FDC884C8C6935C247C /* PaperTrail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PaperTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		10ECF7FDC884C8C6935C247C /* PaperTrail.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PaperTrail.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		12130C7F22B6D9380BA8E269 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		139BA1356694AE817E9A99B8 /* MockAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIService.swift; sourceTree = "<group>"; };
+		1CA9DB10C74BBE95790A10E0 /* PhotoPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPickerView.swift; sourceTree = "<group>"; };
 		1CC7BBD68704B4D450D48FB2 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 		2161052EAF3A6672738F5879 /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
 		26443633B71E4F084ED1AF88 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
@@ -259,6 +261,7 @@
 				B5CABCBAC7D075DBF4587735 /* CameraView.swift */,
 				9826534FA94C5F1EBEE56021 /* DocumentScannerView.swift */,
 				CEA796BD1AE43DE4C1A7AD76 /* MainFlowView.swift */,
+				1CA9DB10C74BBE95790A10E0 /* PhotoPickerView.swift */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -474,6 +477,7 @@
 				041D720BCE3D32A143BDA03D /* OpenAIVisionService.swift in Sources */,
 				B121CA915CC0F5257EC5A12F /* PDFGenerator.swift in Sources */,
 				EA1FF9DE5AB8B22EE8967072 /* PaperTrailApp.swift in Sources */,
+				548194663C6ABA99E04A7133 /* PhotoPickerView.swift in Sources */,
 				4A49DAB9FDB8E661F2464DEA /* PromptEditorView.swift in Sources */,
 				5A0E2885922ABAC3A530E7A1 /* Receipt.swift in Sources */,
 				B73DD76CC80FB35E8B344F31 /* ReceiptEditView.swift in Sources */,
@@ -578,7 +582,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M794943H4X;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaperTrail/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ReceiptScanner needs camera access to scan receipts.";
@@ -605,7 +608,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M794943H4X;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaperTrail/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ReceiptScanner needs camera access to scan receipts.";

@@ -33,6 +33,7 @@ final class CameraViewModel: ObservableObject {
     @Published var validationIssues: [String] = []
     @Published var showValidationAlert: Bool  = false
     @Published var showDocumentScanner: Bool  = false
+    @Published var showPhotoPicker: Bool      = false
 
     // MARK: - Dependencies
     let cameraManager: CameraManager

@@ -125,6 +125,17 @@ private struct FlowCoordinator: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.stage == .idle)
+        .sheet(isPresented: $viewModel.showPhotoPicker) {
+            PhotoPickerView(
+                onImageSelected: { image in
+                    viewModel.showPhotoPicker = false
+                    viewModel.handleDocumentScanResult(image)
+                },
+                onCancel: {
+                    viewModel.showPhotoPicker = false
+                }
+            )
+        }
         .sheet(isPresented: $viewModel.showDocumentScanner) {
             DocumentScannerView(
                 onScanComplete: { image in
@@ -178,16 +189,26 @@ private struct ScanLandingView: View {
                     .padding(.horizontal, 40)
             }
 
-            Button {
-                viewModel.showDocumentScanner = true
-            } label: {
-                Label("Scan Receipt", systemImage: "camera.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+            VStack(spacing: 14) {
+                Button {
+                    viewModel.showDocumentScanner = true
+                } label: {
+                    Label("Scan Receipt", systemImage: "camera.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    viewModel.showPhotoPicker = true
+                } label: {
+                    Label("Choose from Photos", systemImage: "photo.on.rectangle")
+                        .font(.subheadline)
+                }
+                .foregroundColor(.accentColor)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.horizontal, 40)
 
             Spacer()
